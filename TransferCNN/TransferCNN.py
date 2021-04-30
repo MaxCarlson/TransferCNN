@@ -77,17 +77,7 @@ def printConfusionMatrix(model, datagen):
     print(classification_report(datagenTestIO.classes, y_pred, target_names=target_names))
 
 
-
-def trainModel(model, epochs, name):
-    model.compile(optimizer=keras.optimizers.Adam(0.01), 
-              loss=keras.losses.binary_crossentropy,
-              metrics=['accuracy'])
-    printConfusionMatrix(model, datagen)
-    history = model.fit(datagenTraining, epochs=epochs, #steps_per_epoch=1000//batchSize, # 5 epochs seems best so far
-              validation_data=datagenTest)#, validation_steps=500//batchSize)
-    printConfusionMatrix(model, datagen)
-
-    # Display info
+def plotAccuracy(name, history):
     plt.plot(history.history['accuracy'])
     plt.plot(history.history['val_accuracy'])
     plt.title('model accuracy')
@@ -95,11 +85,35 @@ def trainModel(model, epochs, name):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     #plt.show()
-    plt.savefig(name + '.jpg')
+    plt.savefig(name + '_acc.jpg')
+    plt.close()
+
+def plotLoss(name, history):
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    #plt.show()
+    plt.savefig(name + '_loss.jpg')
+    plt.close()
+
+def trainModel(model, epochs, name):
+    model.compile(optimizer=keras.optimizers.Adam(0.005), 
+              loss=keras.losses.binary_crossentropy,
+              metrics=['accuracy'])
+    printConfusionMatrix(model, datagen)
+    history = model.fit(datagenTraining, epochs=epochs, #steps_per_epoch=1000//batchSize, # 5 epochs seems best so far
+              validation_data=datagenTest)#, validation_steps=500//batchSize)
+    printConfusionMatrix(model, datagen)
+    plotAccuracy(name, history)
+    plotLoss(name, history)
+    
 
 
-trainModel(model, 10, 'transferHead')
-trainModel(newModel, 10, 'reducedTransfer')
+trainModel(model, 8, 'transferHead')
+trainModel(newModel, 14, 'reducedTransfer')
 
 
 
