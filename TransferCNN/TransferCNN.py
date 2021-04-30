@@ -6,6 +6,7 @@ import keras
 import numpy as np
 from keras import layers
 from keras import models
+from matplotlib import pyplot as plt
 from keras.applications import InceptionResNetV2
 from sklearn.metrics import classification_report, confusion_matrix
 
@@ -21,13 +22,18 @@ from sklearn.metrics import classification_report, confusion_matrix
 preModel = InceptionResNetV2(weights='imagenet', 
                              include_top=False, input_shape=(150,150,3))
 
-# Add transfer head to sequential model
-model = models.Sequential()
-model.add(preModel)
-model.add(layers.Flatten())
-model.add(layers.Dense(256, activation='relu'))
-model.add(layers.Dense(1, activation='sigmoid'))
 
+def addTransferHead(otherModel):
+    # Add transfer head to sequential model
+    model = models.Sequential()
+    model.add(otherModel)
+    model.add(layers.Flatten())
+    model.add(layers.Dense(256, activation='relu'))
+    model.add(layers.Dense(1, activation='sigmoid'))
+    return model
+
+
+model = addTransferHead(preModel)
 preModel.summary()
 model.summary()
 
@@ -36,21 +42,29 @@ preModel.trainable=False
 
 datagen = keras.preprocessing.image.ImageDataGenerator(
     rescale=1./255, rotation_range=25)#, featurewise_center=True)
+datagenTest = keras.preprocessing.image.ImageDataGenerator(
+    rescale=1./255)
+datagenTestIO = keras.preprocessing.image.ImageDataGenerator(
+    rescale=1./255) # Weird bug requires duplicating datagen's if used twice
 
-batchSize = 32
+batchSize = 64
 datagenTraining = datagen.flow_from_directory('dataset/training_set', 
                             class_mode='binary', target_size=(150,150), batch_size=batchSize)
-datagenTest = datagen.flow_from_directory('dataset/test_set', 
+
+datagenTest = datagenTest.flow_from_directory('dataset/test_set', 
                             class_mode='binary', target_size=(150,150), batch_size=batchSize)
-datagenTestIO = datagen.flow_from_directory('dataset/test_set', 
+
+datagenTestIO = datagenTestIO.flow_from_directory('dataset/test_set', 
                             class_mode='binary', target_size=(150,150), 
                             batch_size=batchSize, shuffle=False)
 
-#datagen.fit()
-model.compile(optimizer=keras.optimizers.Adam(0.01), 
-              loss=keras.losses.binary_crossentropy,
-              metrics=['accuracy'])
-model.summary()
+
+
+newModel = models.Sequential()
+for layer in preModel.layers[0:13]:
+    newModel.add(layer)
+newModel.trainable = False
+newModel = addTransferHead(newModel)
 
 def printConfusionMatrix(model, datagen):
     #Confusion Matrix and Classification Report
@@ -62,10 +76,33 @@ def printConfusionMatrix(model, datagen):
     target_names = ['Cats', 'Dogs']
     print(classification_report(datagenTestIO.classes, y_pred, target_names=target_names))
 
-printConfusionMatrix(model, datagen)
-model.fit(datagenTraining, epochs=5, #steps_per_epoch=500//batchSize, # 5 epochs seems best so far
-          validation_data=datagenTest, validation_steps=500//batchSize)
-printConfusionMatrix(model, datagen)
+
+
+def trainModel(model, epochs, name):
+    model.compile(optimizer=keras.optimizers.Adam(0.01), 
+              loss=keras.losses.binary_crossentropy,
+              metrics=['accuracy'])
+    printConfusionMatrix(model, datagen)
+    history = model.fit(datagenTraining, epochs=epochs, #steps_per_epoch=1000//batchSize, # 5 epochs seems best so far
+              validation_data=datagenTest)#, validation_steps=500//batchSize)
+    printConfusionMatrix(model, datagen)
+
+    # Display info
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    #plt.show()
+    plt.savefig(name + '.jpg')
+
+
+trainModel(model, 10, 'transferHead')
+trainModel(newModel, 10, 'reducedTransfer')
+
+
+
 
 
 
