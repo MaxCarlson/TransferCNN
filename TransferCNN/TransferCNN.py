@@ -21,6 +21,21 @@ from sklearn.metrics import classification_report, confusion_matrix
 
 preModel = InceptionResNetV2(weights='imagenet', 
                              include_top=False, input_shape=(150,150,3))
+flayer = preModel.get_layer(index=1)
+filters = flayer.get_weights()[0]
+print(flayer.name, filters.shape)
+
+# Normalize filters
+fmin, fmax = filters.min(), filters.max()
+filters = (filters - fmin) / (fmax - fmin)
+
+fig, axs = plt.subplots(4, 8)
+for i in range(4):
+    for j in range(8):
+        axs[i,j].imshow(filters[:,:,:,i*8+j])
+
+
+plt.show()
 
 
 def addTransferHead(otherModel):
@@ -61,7 +76,7 @@ datagenTestIO = datagenTestIO.flow_from_directory('dataset/test_set',
 
 
 newModel = models.Sequential()
-for layer in preModel.layers[0:13]:
+for layer in preModel.layers[0:17]:
     newModel.add(layer)
 newModel.trainable = False
 newModel = addTransferHead(newModel)
@@ -99,8 +114,8 @@ def plotLoss(name, history):
     plt.savefig(name + '_loss.jpg')
     plt.close()
 
-def trainModel(model, epochs, name):
-    model.compile(optimizer=keras.optimizers.Adam(0.005), 
+def trainModel(model, epochs, name, lr=0.002):
+    model.compile(optimizer=keras.optimizers.Adam(lr), 
               loss=keras.losses.binary_crossentropy,
               metrics=['accuracy'])
     printConfusionMatrix(model, datagen)
@@ -112,8 +127,8 @@ def trainModel(model, epochs, name):
     
 
 
-trainModel(model, 8, 'transferHead')
-trainModel(newModel, 14, 'reducedTransfer')
+trainModel(model, 12, 'transferHead')
+#trainModel(newModel, 20, 'reducedTransfer', lr=0.01)
 
 
 
