@@ -119,7 +119,7 @@ def trainModel(model, epochs, name, lr=0.002):
               loss=keras.losses.binary_crossentropy,
               metrics=['accuracy'])
     printConfusionMatrix(model, datagen)
-    history = model.fit(datagenTraining, epochs=epochs, #steps_per_epoch=1000//batchSize, # 5 epochs seems best so far
+    history = model.fit(datagenTraining, epochs=epochs, #steps_per_epoch=1000//batchSize, 
               validation_data=datagenTest)#, validation_steps=500//batchSize)
     printConfusionMatrix(model, datagen)
     plotAccuracy(name, history)
@@ -128,7 +128,7 @@ def trainModel(model, epochs, name, lr=0.002):
 
 
 trainModel(model, 12, 'transferHead')
-#trainModel(newModel, 20, 'reducedTransfer', lr=0.01)
+trainModel(newModel, 20, 'reducedTransfer', lr=0.01)
 
 
 
